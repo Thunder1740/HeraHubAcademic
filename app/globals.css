@@ -342,11 +342,26 @@ a {
   border-color: var(--green);
   background: #f6fbf9;
 }
+.danger {
+  border: 1px solid #efc7c7;
+  background: #fff;
+  color: var(--red);
+}
+.danger:hover {
+  border-color: var(--red);
+  background: #fff7f7;
+}
 .primary:disabled,
-.secondary:disabled {
+.secondary:disabled,
+.danger:disabled {
   opacity: 0.45;
   cursor: not-allowed;
   transform: none;
+}
+.matrix-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
 }
 .wide {
   width: 100%;

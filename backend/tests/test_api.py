@@ -25,6 +25,27 @@ def test_bootstrap_matrix():
         assert matrices[0]["subject_count"] == 50
 
 
+def test_create_and_delete_matrix():
+    with client:
+        created = client.post(
+            "/api/matrices",
+            json={"name": "Matriz temporária de teste", "total_hours": 100},
+        )
+        assert created.status_code == 200
+        matrix_id = created.json()["id"]
+        subject = client.post(
+            f"/api/matrices/{matrix_id}/subjects",
+            json={"code": "TMP001", "name": "Componente temporário", "hours": 100},
+        )
+        assert subject.status_code == 200
+
+        deleted = client.delete(f"/api/matrices/{matrix_id}")
+        assert deleted.status_code == 200
+        assert deleted.json()["name"] == "Matriz temporária de teste"
+        assert all(row["id"] != matrix_id for row in client.get("/api/matrices").json())
+        assert client.delete(f"/api/matrices/{matrix_id}").status_code == 404
+
+
 def test_reference_upload_review():
     path = os.getenv("FARMAHUB_REFERENCE_PDF")
     if not path:

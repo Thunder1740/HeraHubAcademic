@@ -1217,6 +1217,20 @@ function MatricesPanel({ rows, api, done }: any) {
     await chooseRuleSubject(ruleSubject);
     done();
   }
+  async function removeMatrix() {
+    if (!matrix) return;
+    if (
+      !confirm(
+        `Remover definitivamente a matriz "${matrix.name}"?\n\nOs componentes e pré-requisitos desta matriz serão apagados. Os estudantes e seus históricos serão preservados, mas ficarão sem uma matriz vinculada até uma nova seleção. Esta ação não pode ser desfeita.`,
+      )
+    )
+      return;
+    await api(`/matrices/${matrix.id}`, { method: "DELETE" });
+    setSelected(null);
+    setRuleSubject("");
+    setRules([]);
+    await done();
+  }
   return (
     <div className="stack">
       <div className="section-intro">
@@ -1227,9 +1241,18 @@ function MatricesPanel({ rows, api, done }: any) {
             confirmação institucional.
           </p>
         </div>
-        <button className="secondary" onClick={() => setNewMatrix(!newMatrix)}>
-          + Nova matriz
-        </button>
+        <div className="matrix-actions">
+          <button
+            className="danger"
+            onClick={removeMatrix}
+            disabled={!matrix}
+          >
+            − Remover matriz
+          </button>
+          <button className="secondary" onClick={() => setNewMatrix(!newMatrix)}>
+            + Nova matriz
+          </button>
+        </div>
       </div>
       {newMatrix && (
         <form className="panel inline-form" onSubmit={createMatrix}>

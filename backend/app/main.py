@@ -173,6 +173,18 @@ def create_matrix(payload: dict[str, Any], db: Session = Depends(get_db)):
     return _matrix_json(matrix)
 
 
+@app.delete("/api/matrices/{matrix_id}")
+def delete_matrix(matrix_id: int, db: Session = Depends(get_db)):
+    matrix = db.get(CurriculumMatrix, matrix_id)
+    if not matrix:
+        raise HTTPException(404, "Matriz não encontrada")
+    name = matrix.name
+    affected_students = len(matrix.students)
+    db.delete(matrix)
+    db.commit()
+    return {"ok": True, "name": name, "affected_students": affected_students}
+
+
 @app.post("/api/matrices/{matrix_id}/subjects")
 def create_subject(matrix_id: int, payload: dict[str, Any], db: Session = Depends(get_db)):
     matrix = db.get(CurriculumMatrix, matrix_id)
