@@ -76,6 +76,15 @@ def test_complete_local_workflow():
         assert len(detail.json()["records"]) == 2
         assert len(detail.json()["attempts"]) == 1
 
+        record_id = detail.json()["records"][0]["id"]
+        record_update = client.put(
+            f"/api/records/{record_id}",
+            json={"subject_name": "Disciplina revisada", "status": "A Cursar", "grade": 8.5, "hours": 60},
+        )
+        assert record_update.status_code == 200
+        assert record_update.json()["subject_name"] == "Disciplina revisada"
+        assert record_update.json()["hours_source"] == "Manual"
+
         update = client.put(
             f"/api/students/{student_id}",
             json={"academic_status": "Formando", "expected_graduation": "2027/1"},

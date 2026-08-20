@@ -648,6 +648,22 @@ function ImportPanel({ matrices, settings, api, done }: any) {
 }
 
 function Review({ data, setData, busy, confirm }: any) {
+  function updateRecord(index: number, field: string, value: any) {
+    const records = data.records.map((row: Row, rowIndex: number) => {
+      if (rowIndex !== index) return row;
+      const updated = { ...row, [field]: value };
+      if (field === "subject_name") {
+        updated.normalized_name = value
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^A-Za-z0-9]+/g, " ")
+          .trim()
+          .toUpperCase();
+      }
+      return updated;
+    });
+    setData({ ...data, records });
+  }
   return (
     <article className="panel review">
       <div className="review-head">
@@ -760,21 +776,23 @@ function Review({ data, setData, busy, confirm }: any) {
             </tr>
           </thead>
           <tbody>
-            {data.records.map((row: Row) => (
+            {data.records.map((row: Row, index: number) => (
               <tr key={row.normalized_name}>
-                <td>{row.semester}º</td>
+                <td><input className="cell-number" type="number" value={row.semester} onChange={(e) => updateRecord(index, "semester", Number(e.target.value))} /></td>
                 <td>
-                  <strong>{row.subject_name}</strong>
+                  <input className="review-subject-name" value={row.subject_name} onChange={(e) => updateRecord(index, "subject_name", e.target.value)} />
                   {row.elective_choice && (
                     <small>Integralizada por {row.elective_choice}</small>
                   )}
                 </td>
                 <td>
-                  <Pill kind={tone(row.status)}>{row.status}</Pill>
+                  <select value={row.status} onChange={(e) => updateRecord(index, "status", e.target.value)}>
+                    <option>Aprovado</option><option>Dispensado</option><option>Em Curso</option><option>A Cursar</option><option>Reprovado por Nota</option><option>Reprovado por Frequência</option>
+                  </select>
                 </td>
-                <td>{row.grade ?? "—"}</td>
-                <td>{row.academic_period || "—"}</td>
-                <td>{row.hours || "—"}</td>
+                <td><input className="cell-number" type="number" step="0.1" value={row.grade ?? ""} onChange={(e) => updateRecord(index, "grade", e.target.value === "" ? null : Number(e.target.value))} /></td>
+                <td><input className="cell-period" value={row.academic_period || ""} placeholder="2026/1" onChange={(e) => updateRecord(index, "academic_period", e.target.value)} /></td>
+                <td><input className="cell-number" type="number" value={row.hours ?? ""} onChange={(e) => updateRecord(index, "hours", e.target.value === "" ? null : Number(e.target.value))} /></td>
                 <td>
                   <span className="source">{row.hours_source}</span>
                 </td>
@@ -876,6 +894,7 @@ function StudentDrawer({ value, api, close, done, removed }: any) {
   const [student, setStudent] = useState(value);
   const [tab, setTab] = useState("history");
   const [busy, setBusy] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<Row | null>(null);
   async function save() {
     setBusy(true);
     await api(`/students/${student.id}`, {
@@ -900,6 +919,27 @@ function StudentDrawer({ value, api, close, done, removed }: any) {
       body: JSON.stringify({ intends }),
     });
     await done();
+  }
+  async function saveRecord() {
+    if (!editingRecord) return;
+    setBusy(true);
+    try {
+      const updated = await api(`/records/${editingRecord.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editingRecord),
+      });
+      setStudent({
+        ...student,
+        records: student.records.map((row: Row) =>
+          row.id === updated.id ? { ...row, ...updated } : row,
+        ),
+      });
+      setEditingRecord(null);
+      await done();
+    } finally {
+      setBusy(false);
+    }
   }
   async function removeProfile() {
     if (
@@ -1003,11 +1043,24 @@ function StudentDrawer({ value, api, close, done, removed }: any) {
                     <th>Nota</th>
                     <th>CH</th>
                     <th>Interesse</th>
+                    <th>Ações</th>
                   </tr>
                 </thead>
                 <tbody>
                   {student.records.map((row: Row) => (
                     <tr key={row.id}>
+                      {editingRecord?.id === row.id ? (
+                        <>
+                          <td><input className="cell-number" type="number" value={editingRecord!.semester} onChange={(e) => setEditingRecord({ ...editingRecord!, semester: Number(e.target.value) })} /></td>
+                          <td><input className="drawer-record-name" value={editingRecord!.subject_name} onChange={(e) => setEditingRecord({ ...editingRecord!, subject_name: e.target.value })} /></td>
+                          <td><select value={editingRecord!.status} onChange={(e) => setEditingRecord({ ...editingRecord!, status: e.target.value })}><option>Aprovado</option><option>Dispensado</option><option>Em Curso</option><option>A Cursar</option><option>Reprovado por Nota</option><option>Reprovado por Frequência</option></select></td>
+                          <td><input className="cell-number" type="number" step="0.1" value={editingRecord!.grade ?? ""} onChange={(e) => setEditingRecord({ ...editingRecord!, grade: e.target.value === "" ? null : Number(e.target.value) })} /></td>
+                          <td><input className="cell-number" type="number" value={editingRecord!.hours ?? ""} onChange={(e) => setEditingRecord({ ...editingRecord!, hours: e.target.value === "" ? null : Number(e.target.value) })} /></td>
+                          <td>—</td>
+                          <td className="subject-actions"><button className="link" disabled={busy} onClick={saveRecord}>Salvar</button><button className="danger-link" onClick={() => setEditingRecord(null)}>Cancelar</button></td>
+                        </>
+                      ) : (
+                        <>
                       <td>{row.semester}º</td>
                       <td>
                         <strong>{row.display_name}</strong>
@@ -1031,6 +1084,9 @@ function StudentDrawer({ value, api, close, done, removed }: any) {
                           "—"
                         )}
                       </td>
+                      <td><button className="link" onClick={() => setEditingRecord({ ...row })}>Editar</button></td>
+                        </>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -1171,6 +1227,10 @@ function MatricesPanel({ rows, api, done }: any) {
   const [newMatrix, setNewMatrix] = useState(false);
   const [ruleSubject, setRuleSubject] = useState("");
   const [rules, setRules] = useState<Row[]>([]);
+  const [importReview, setImportReview] = useState<Row | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importError, setImportError] = useState("");
+  const [editingSubject, setEditingSubject] = useState<Row | null>(null);
   const matrix = rows.find((r: Row) => r.id === selected) || rows[0];
   useEffect(() => {
     if (!selected && rows[0]) setSelected(rows[0].id);
@@ -1194,6 +1254,16 @@ function MatricesPanel({ rows, api, done }: any) {
     });
     e.currentTarget.reset();
     done();
+  }
+  async function saveSubject() {
+    if (!editingSubject) return;
+    await api(`/subjects/${editingSubject.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editingSubject),
+    });
+    setEditingSubject(null);
+    await done();
   }
   async function chooseRuleSubject(id: string) {
     setRuleSubject(id);
@@ -1231,6 +1301,49 @@ function MatricesPanel({ rows, api, done }: any) {
     setRules([]);
     await done();
   }
+  async function reviewMatrixPdf(file?: File) {
+    if (!file) return;
+    setImportBusy(true);
+    setImportError("");
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      const response = await fetch(`${API}/matrices/import/review`, {
+        method: "POST",
+        body: form,
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.detail);
+      setImportReview({ ...body, name: body.suggested_name, valid_from: "" });
+    } catch (cause) {
+      setImportError(
+        cause instanceof Error ? cause.message : "Falha ao interpretar a matriz",
+      );
+    } finally {
+      setImportBusy(false);
+    }
+  }
+  async function confirmMatrixImport() {
+    if (!importReview) return;
+    setImportBusy(true);
+    setImportError("");
+    try {
+      const created = await api("/matrices/import/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(importReview),
+      });
+      setImportReview(null);
+      setSelected(created.id);
+      await done();
+    } catch (cause) {
+      setImportError(
+        cause instanceof Error ? cause.message : "Falha ao salvar a matriz",
+      );
+    } finally {
+      setImportBusy(false);
+    }
+  }
   return (
     <div className="stack">
       <div className="section-intro">
@@ -1243,17 +1356,128 @@ function MatricesPanel({ rows, api, done }: any) {
         </div>
         <div className="matrix-actions">
           <button
-            className="danger"
+            className="matrix-remove"
             onClick={removeMatrix}
             disabled={!matrix}
+            title={matrix ? `Remover ${matrix.name}` : "Nenhuma matriz selecionada"}
           >
-            − Remover matriz
+            <span aria-hidden="true">−</span>
+            Remover matriz
           </button>
+          <label className={importBusy ? "matrix-import disabled" : "matrix-import"}>
+            <input
+              type="file"
+              accept="application/pdf"
+              disabled={importBusy}
+              onChange={(e) => reviewMatrixPdf(e.target.files?.[0])}
+            />
+            <span aria-hidden="true">⇧</span>
+            {importBusy ? "Lendo PDF…" : "Importar PDF"}
+          </label>
           <button className="secondary" onClick={() => setNewMatrix(!newMatrix)}>
             + Nova matriz
           </button>
         </div>
       </div>
+      {importError && <p className="form-error">{importError}</p>}
+      {importReview && (
+        <article className="panel matrix-import-review">
+          <div className="review-head">
+            <div>
+              <Pill kind={importReview.warnings.length ? "warning" : "success"}>
+                {importReview.warnings.length
+                  ? "REVISAR ANTES DE SALVAR"
+                  : "EXTRAÇÃO CONSISTENTE"}
+              </Pill>
+              <h3>Matriz identificada no PDF</h3>
+              <p>
+                {importReview.subjects.length} componentes · {importReview.total_hours}h
+                {importReview.document_date
+                  ? ` · Documento de ${importReview.document_date}`
+                  : ""}
+              </p>
+            </div>
+            <div>
+              <button className="secondary" onClick={() => setImportReview(null)}>
+                Cancelar
+              </button>
+              <button
+                className="primary"
+                disabled={importBusy || !importReview.name.trim()}
+                onClick={confirmMatrixImport}
+              >
+                Salvar matriz completa
+              </button>
+            </div>
+          </div>
+          <div className="matrix-import-fields">
+            <label>
+              Nome da nova matriz
+              <input
+                value={importReview.name}
+                onChange={(e) =>
+                  setImportReview({ ...importReview, name: e.target.value })
+                }
+              />
+            </label>
+            <label>
+              Vigência
+              <input
+                value={importReview.valid_from}
+                placeholder="Ex.: 2025/1"
+                onChange={(e) =>
+                  setImportReview({ ...importReview, valid_from: e.target.value })
+                }
+              />
+            </label>
+            <label>
+              Campus
+              <input
+                value={importReview.campus}
+                onChange={(e) =>
+                  setImportReview({ ...importReview, campus: e.target.value })
+                }
+              />
+            </label>
+          </div>
+          {importReview.warnings.map((warning: string) => (
+            <p className="matrix-import-warning" key={warning}>⚠ {warning}</p>
+          ))}
+          <div className="table-wrap matrix-import-table">
+            <table>
+              <thead>
+                <tr><th>Seq.</th><th>Código</th><th>Componente</th><th>Sem.</th><th>CH</th></tr>
+              </thead>
+              <tbody>
+                {importReview.subjects.map((subject: Row) => (
+                  <tr key={`${subject.code}-${subject.sequence}`}>
+                    <td><input className="cell-number" type="number" value={subject.sequence} onChange={(e) => setImportReview({ ...importReview, subjects: importReview.subjects.map((item: Row) => item.sequence === subject.sequence ? { ...item, sequence: Number(e.target.value) } : item) })} /></td>
+                    <td><input className="cell-code" value={subject.code} onChange={(e) => setImportReview({ ...importReview, subjects: importReview.subjects.map((item: Row) => item.sequence === subject.sequence ? { ...item, code: e.target.value } : item) })} /></td>
+                    <td>
+                      <input
+                        className={subject.name.includes("�") ? "needs-review" : ""}
+                        value={subject.name}
+                        onChange={(e) =>
+                          setImportReview({
+                            ...importReview,
+                            subjects: importReview.subjects.map((item: Row) =>
+                              item.sequence === subject.sequence
+                                ? { ...item, name: e.target.value }
+                                : item,
+                            ),
+                          })
+                        }
+                      />
+                    </td>
+                    <td><input className="cell-number" type="number" value={subject.semester} onChange={(e) => setImportReview({ ...importReview, subjects: importReview.subjects.map((item: Row) => item.sequence === subject.sequence ? { ...item, semester: Number(e.target.value) } : item) })} /></td>
+                    <td><input className="cell-number" type="number" value={subject.hours} onChange={(e) => setImportReview({ ...importReview, subjects: importReview.subjects.map((item: Row) => item.sequence === subject.sequence ? { ...item, hours: Number(e.target.value) } : item) })} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </article>
+      )}
       {newMatrix && (
         <form className="panel inline-form" onSubmit={createMatrix}>
           <label>
@@ -1323,11 +1547,29 @@ function MatricesPanel({ rows, api, done }: any) {
                     <th>CH</th>
                     <th>Créd.</th>
                     <th>Categoria</th>
+                    <th>Ações</th>
                   </tr>
                 </thead>
                 <tbody>
                   {matrix.subjects.map((s: Row) => (
                     <tr key={s.id}>
+                      {editingSubject?.id === s.id ? (
+                        <>
+                          <td><input className="cell-number" type="number" value={editingSubject!.sequence} onChange={(e) => setEditingSubject({ ...editingSubject!, sequence: Number(e.target.value) })} /></td>
+                          <td><input value={editingSubject!.code} onChange={(e) => setEditingSubject({ ...editingSubject!, code: e.target.value })} /></td>
+                          <td><input className="cell-name" value={editingSubject!.name} onChange={(e) => setEditingSubject({ ...editingSubject!, name: e.target.value })} /></td>
+                          <td><input className="cell-number" type="number" value={editingSubject!.semester} onChange={(e) => setEditingSubject({ ...editingSubject!, semester: Number(e.target.value) })} /></td>
+                          <td><input className="cell-number" type="number" value={editingSubject!.hours} onChange={(e) => setEditingSubject({ ...editingSubject!, hours: Number(e.target.value) })} /></td>
+                          <td><input className="cell-number" type="number" value={editingSubject!.credits} onChange={(e) => setEditingSubject({ ...editingSubject!, credits: Number(e.target.value) })} /></td>
+                          <td>
+                            <select value={editingSubject!.category} onChange={(e) => setEditingSubject({ ...editingSubject!, category: e.target.value })}>
+                              <option>Regular</option><option>Estágio</option><option>Optativa</option><option>Atividade complementar</option>
+                            </select>
+                          </td>
+                          <td className="subject-actions"><button className="link" onClick={saveSubject}>Salvar</button><button className="danger-link" onClick={() => setEditingSubject(null)}>Cancelar</button></td>
+                        </>
+                      ) : (
+                        <>
                       <td>{s.sequence}</td>
                       <td>
                         <span className="code">{s.code}</span>
@@ -1341,6 +1583,9 @@ function MatricesPanel({ rows, api, done }: any) {
                       <td>
                         <Pill kind={tone(s.category)}>{s.category}</Pill>
                       </td>
+                      <td><button className="link" onClick={() => setEditingSubject({ ...s })}>Editar</button></td>
+                        </>
+                      )}
                     </tr>
                   ))}
                 </tbody>

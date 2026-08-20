@@ -17,6 +17,10 @@ ROW_RE = re.compile(
     rf"(?:\*{{3}}\s+)?(?P<status>{STATUS_PATTERN})$"
 )
 SEMESTER_RE = re.compile(r"^\s*(\d{1,2})º\s+Semestre\s*$", re.IGNORECASE)
+MATRIX_ROW_RE = re.compile(
+    r"^\s*(?P<code>\d+)\s+(?P<name>.+?)\s+(?P<semester>\d{1,2})\s+"
+    r"(?P<hours>\d+)\s+(?P<sequence>\d+)\s*$"
+)
 
 
 def normalize_name(value: str) -> str:
@@ -42,6 +46,93 @@ def normalize_status(value: str) -> str:
 def extract_text(pdf_bytes: bytes) -> str:
     with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
         return "\n\f\n".join(page.extract_text(layout=True) or "" for page in pdf.pages)
+
+
+def parse_curriculum_matrix(pdf_bytes: bytes) -> dict[str, Any]:
+    text = extract_text(pdf_bytes)
+    course_match = re.search(r"Curso:\s*\d+\s+([^\n]+)", text, re.IGNORECASE)
+    campus_match = re.search(r"Unidade:\s*\d+\s+([^\n]+)", text, re.IGNORECASE)
+    total_match = re.search(r"Carga Hor[áa]ria Total:\s*(\d+)", text, re.IGNORECASE)
+    date_match = re.search(r"DATA\s+(\d{2}/\d{2}/\d{4})", text, re.IGNORECASE)
+    subjects: list[dict[str, Any]] = []
+
+    ignored = (
+        "MATRIZ CURRICULAR",
+        "PÁGINA",
+        "PAGINA",
+        "DATA ",
+        "HORA:",
+        "UNIDADE:",
+        "CURSO:",
+        "DISCIPLINAS",
+        "CÓDIGO NOME",
+        "CODIGO NOME",
+        "CARGA HORÁRIA TOTAL",
+        "CARGA HORARIA TOTAL",
+        "REN",
+    )
+    for raw_line in text.splitlines():
+        line = re.sub(r"\s+", " ", raw_line.strip())
+        if not line:
+            continue
+        match = MATRIX_ROW_RE.match(line)
+        if match:
+            item = match.groupdict()
+            name = item["name"].strip()
+            subjects.append(
+                {
+                    "code": item["code"],
+                    "name": name,
+                    "semester": int(item["semester"]),
+                    "hours": int(item["hours"]),
+                    "credits": 0,
+                    "sequence": int(item["sequence"]),
+                    "category": "Atividade complementar"
+                    if "ATIVIDADES COMPLEMENTARES" in normalize_name(name)
+                    else "Estágio"
+                    if "ESTAGIO" in normalize_name(name)
+                    else "Optativa"
+                    if any(word in normalize_name(name) for word in ("OPTATIVA", "ELETIVA"))
+                    else "Regular",
+                }
+            )
+            continue
+        normalized = normalize_name(line)
+        if subjects and not any(normalized.startswith(normalize_name(prefix)) for prefix in ignored):
+            if re.fullmatch(r"[A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ0-9 ,.'()\-/]+", line):
+                subjects[-1]["name"] = f'{subjects[-1]["name"]} {line}'.strip()
+
+    subjects.sort(key=lambda item: item["sequence"])
+    warnings: list[str] = []
+    if not subjects:
+        warnings.append("Nenhum componente curricular foi identificado")
+    if "�" in text:
+        warnings.append(
+            "O PDF possui acentos sem codificação de texto; revise os nomes destacados antes de salvar"
+        )
+    sequences = [item["sequence"] for item in subjects]
+    if sequences and sequences != list(range(min(sequences), max(sequences) + 1)):
+        warnings.append("A sequência dos componentes possui lacunas; revise antes de salvar")
+    calculated_hours = sum(item["hours"] for item in subjects)
+    total_hours = int(total_match.group(1)) if total_match else calculated_hours
+    if total_match and calculated_hours != total_hours:
+        warnings.append(
+            f"A soma das cargas dos componentes ({calculated_hours}h) difere da carga total informada ({total_hours}h)"
+        )
+    course = course_match.group(1).strip() if course_match else "FARMÁCIA"
+    campus = campus_match.group(1).strip() if campus_match else "Campus não identificado"
+    document_date = date_match.group(1) if date_match else None
+    year = document_date[-4:] if document_date else ""
+    return {
+        "suggested_name": f"{course.title()} — Matriz {year or 'importada'}",
+        "course": course.title(),
+        "campus": campus,
+        "document_date": document_date,
+        "total_hours": total_hours,
+        "calculated_hours": calculated_hours,
+        "subjects": subjects,
+        "warnings": warnings,
+    }
 
 
 def _extract_identity(text: str) -> tuple[str | None, str | None, str | None]:

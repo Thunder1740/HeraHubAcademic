@@ -1,18 +1,46 @@
 from __future__ import annotations
 
 import os
+import io
 from collections import Counter
 from pathlib import Path
 
 import pytest
+from reportlab.pdfgen import canvas
 
-from app.parser import normalize_name, normalize_status, parse_ulbra_history
+from app.parser import normalize_name, normalize_status, parse_curriculum_matrix, parse_ulbra_history
 
 
 def test_normalization():
     assert normalize_name("  Farmácia Clínica e Hospitalar ") == "FARMACIA CLINICA E HOSPITALAR"
     assert normalize_status(" Em Curso ") == "Em Curso"
     assert normalize_status("Reprovado por Frequência") == "Reprovado por Frequência"
+
+
+def test_curriculum_matrix_parser():
+    output = io.BytesIO()
+    pdf = canvas.Canvas(output)
+    lines = [
+        "MATRIZ CURRICULAR",
+        "Unidade: 3 Universidade Luterana do Brasil - Campus Canoas",
+        "Curso: 010835 FARMACIA",
+        "Codigo Nome Sem CH Seq",
+        "10001 INTRODUCAO A FARMACIA 1 60 1",
+        "10002 ESTAGIO SUPERVISIONADO EM ANALISES CLINICAS E 9 200 2",
+        "TOXICOLOGICAS",
+        "Carga Horaria Total: 260",
+    ]
+    y = 800
+    for line in lines:
+        pdf.drawString(40, y, line)
+        y -= 20
+    pdf.save()
+    parsed = parse_curriculum_matrix(output.getvalue())
+    assert parsed["total_hours"] == 260
+    assert parsed["calculated_hours"] == 260
+    assert len(parsed["subjects"]) == 2
+    assert parsed["subjects"][1]["name"].endswith("TOXICOLOGICAS")
+    assert parsed["subjects"][1]["category"] == "Estágio"
 
 
 def test_reference_history_regression():

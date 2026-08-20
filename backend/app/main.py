@@ -39,7 +39,7 @@ from .models import (
     Student,
     SubjectEquivalence,
 )
-from .parser import normalize_name, parse_ulbra_history
+from .parser import normalize_name, parse_curriculum_matrix, parse_ulbra_history
 from .seed import bootstrap, category_for
 from .services import (
     conflicts,
@@ -168,6 +168,65 @@ def create_matrix(payload: dict[str, Any], db: Session = Depends(get_db)):
         active=bool(payload.get("active", True)),
     )
     db.add(matrix)
+    db.commit()
+    db.refresh(matrix)
+    return _matrix_json(matrix)
+
+
+@app.post("/api/matrices/import/review")
+def review_matrix_pdf(file: UploadFile = File(...)):
+    try:
+        return parse_curriculum_matrix(_read_pdf(file))
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(422, f"Não foi possível interpretar a matriz: {exc}") from exc
+
+
+@app.post("/api/matrices/import/confirm")
+def confirm_matrix_import(payload: dict[str, Any], db: Session = Depends(get_db)):
+    name = str(payload.get("name") or "").strip()
+    subjects = payload.get("subjects") or []
+    if not name:
+        raise HTTPException(422, "Informe o nome da matriz")
+    if not isinstance(subjects, list) or not subjects:
+        raise HTTPException(422, "Nenhum componente curricular foi informado")
+    if len(subjects) > 500:
+        raise HTTPException(422, "A matriz ultrapassa o limite de 500 componentes")
+    if db.scalar(select(CurriculumMatrix).where(CurriculumMatrix.name == name)):
+        raise HTTPException(409, "Já existe uma matriz com esse nome")
+    codes: set[str] = set()
+    matrix = CurriculumMatrix(
+        name=name,
+        course=str(payload.get("course") or "Farmácia").strip(),
+        campus=str(payload.get("campus") or "ULBRA Canoas").strip(),
+        valid_from=str(payload.get("valid_from") or "").strip() or None,
+        total_hours=int(payload.get("total_hours") or 0),
+        active=True,
+    )
+    db.add(matrix)
+    db.flush()
+    for index, item in enumerate(subjects, 1):
+        code = str(item.get("code") or "").strip()
+        subject_name = str(item.get("name") or "").strip()
+        if not code or not subject_name:
+            raise HTTPException(422, f"Componente {index}: código e nome são obrigatórios")
+        if code in codes:
+            raise HTTPException(422, f"Código duplicado na matriz: {code}")
+        codes.add(code)
+        db.add(
+            MatrixSubject(
+                matrix_id=matrix.id,
+                code=code,
+                name=subject_name,
+                normalized_name=normalize_name(subject_name),
+                semester=int(item.get("semester") or 0),
+                hours=int(item.get("hours") or 0),
+                credits=int(item.get("credits") or 0),
+                sequence=int(item.get("sequence") or index),
+                category=str(item.get("category") or category_for(subject_name.upper())),
+            )
+        )
     db.commit()
     db.refresh(matrix)
     return _matrix_json(matrix)
@@ -371,6 +430,42 @@ def update_student(student_id: int, payload: dict[str, Any], db: Session = Depen
         student.graduation_source = "Manual"
     db.commit()
     return student_detail(db, student_id)
+
+
+@app.put("/api/records/{record_id}")
+def update_course_record(record_id: int, payload: dict[str, Any], db: Session = Depends(get_db)):
+    record = db.get(CourseRecord, record_id)
+    if not record:
+        raise HTTPException(404, "Registro acadêmico não encontrado")
+    for field in ("subject_name", "status", "academic_period", "elective_choice"):
+        if field in payload:
+            setattr(record, field, str(payload[field]).strip() if payload[field] is not None else None)
+    for field in ("semester", "attendance", "hours"):
+        if field in payload:
+            setattr(record, field, int(payload[field]) if payload[field] not in (None, "") else None)
+    if "grade" in payload:
+        record.grade = float(payload["grade"]) if payload["grade"] not in (None, "") else None
+    record.normalized_name = normalize_name(record.subject_name)
+    record.hours_source = "Manual" if "hours" in payload else record.hours_source
+    student = db.get(Student, record.student_id)
+    if student:
+        records = db.scalars(select(CourseRecord).where(CourseRecord.student_id == student.id)).all()
+        student.completed_hours = sum(
+            int(item.hours or 0) for item in records if item.status in {"Aprovado", "Dispensado"}
+        )
+    db.commit()
+    return {
+        "id": record.id,
+        "semester": record.semester,
+        "subject_name": record.subject_name,
+        "display_name": record.elective_choice or record.subject_name,
+        "status": record.status,
+        "grade": record.grade,
+        "academic_period": record.academic_period,
+        "hours": record.hours,
+        "hours_source": record.hours_source,
+        "subject_id": record.subject_id,
+    }
 
 
 @app.delete("/api/students/{student_id}")
