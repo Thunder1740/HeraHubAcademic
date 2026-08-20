@@ -1,0 +1,1 @@
+"""FarmaHub Acadêmico backend."""
