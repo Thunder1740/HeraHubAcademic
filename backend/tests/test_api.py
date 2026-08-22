@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import io
 import os
 
 from fastapi.testclient import TestClient
+from reportlab.pdfgen import canvas
 
 from app.main import app
 
@@ -46,8 +48,74 @@ def test_create_and_delete_matrix():
         assert client.delete(f"/api/matrices/{matrix_id}").status_code == 404
 
 
+def test_matrix_pdf_review_confirm_edit_and_delete():
+    output = io.BytesIO()
+    pdf = canvas.Canvas(output)
+    lines = [
+        "MATRIZ CURRICULAR",
+        "Unidade: 3 Universidade Luterana do Brasil - Campus Canoas",
+        "Curso: 010835 FARMACIA",
+        "Codigo Nome Sem CH Seq",
+        "90001 FUNDAMENTOS DE FARMACIA 1 60 1",
+        "90002 PRATICA FARMACEUTICA 2 80 2",
+        "Carga Horaria Total: 140",
+    ]
+    y = 800
+    for line in lines:
+        pdf.drawString(40, y, line)
+        y -= 20
+    pdf.save()
+
+    with client:
+        review = client.post(
+            "/api/matrices/import/review",
+            files={"file": ("matriz-hera.pdf", output.getvalue(), "application/pdf")},
+        )
+        assert review.status_code == 200
+        reviewed = review.json()
+        assert reviewed["total_hours"] == 140
+        assert len(reviewed["subjects"]) == 2
+
+        # Simula a revisão editável feita pela pessoa antes da confirmação.
+        reviewed["name"] = "Matriz Hera importada"
+        reviewed["subjects"][0]["name"] = "Fundamentos de Farmácia Revisados"
+        confirmed = client.post("/api/matrices/import/confirm", json=reviewed)
+        assert confirmed.status_code == 200
+        matrix = confirmed.json()
+        assert matrix["subject_count"] == 2
+        assert matrix["subjects"][0]["name"] == "Fundamentos de Farmácia Revisados"
+
+        # Garante que a disciplina continua editável após entrar no banco.
+        subject = matrix["subjects"][0]
+        edited = client.put(
+            f"/api/subjects/{subject['id']}",
+            json={"name": "Fundamentos Hera", "hours": 70, "semester": 1},
+        )
+        assert edited.status_code == 200
+        stored = next(row for row in client.get("/api/matrices").json() if row["id"] == matrix["id"])
+        assert stored["subjects"][0]["name"] == "Fundamentos Hera"
+        assert stored["subjects"][0]["hours"] == 70
+
+        assert client.delete(f"/api/matrices/{matrix['id']}").status_code == 200
+        assert all(row["id"] != matrix["id"] for row in client.get("/api/matrices").json())
+
+
+def test_settings_round_trip():
+    with client:
+        original = client.get("/api/settings")
+        assert original.status_code == 200
+        updated = client.put(
+            "/api/settings",
+            json={"reference_period": "2030/1", "default_capacity": 42, "retain_pdfs": False},
+        )
+        assert updated.status_code == 200
+        assert updated.json()["reference_period"] == "2030/1"
+        assert updated.json()["default_capacity"] == "42"
+        assert updated.json()["retain_pdfs"] == "false"
+
+
 def test_reference_upload_review():
-    path = os.getenv("HERA_REFERENCE_PDF") or os.getenv("FARMAHUB_REFERENCE_PDF")
+    path = os.getenv("HERA_REFERENCE_PDF")
     if not path:
         return
     with client, open(path, "rb") as stream:

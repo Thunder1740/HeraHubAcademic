@@ -1,6 +1,6 @@
-# Verificação da versão beta
+# Verificação final do Hera
 
-Data da verificação: 20/08/2026.
+Data da verificação: 22/08/2026.
 
 ## Caso documental real
 
@@ -28,16 +28,29 @@ Também foi verificado que LIBRAS é associada à Optativa I e não cria uma seg
 
 ## Testes executados
 
-- 7 testes automatizados do extrator e da API: aprovados.
+- 10 testes automatizados do extrator, banco e API: aprovados.
+- 2 regressões documentais opcionais: não executadas por dependerem de um histórico externo específico.
 - Build de produção do frontend: aprovado.
 - Verificação estática do frontend: aprovada.
+- Teste da interface HTML compilada: aprovado.
+- PDF real de matriz: 60 disciplinas e 4.000 horas, sem avisos nem caracteres corrompidos.
+- Revisão, edição, confirmação e exclusão de matriz importada: aprovadas.
+- Edição de disciplinas antes e depois da confirmação: aprovada.
 - Importação e confirmação transacional em banco temporário: aprovada.
-- Geração de 11 linhas de demanda a partir do caso real: aprovada.
-- Exportação individual para Excel: aprovada.
-- Exportação da demanda para PDF: aprovada.
+- Edição e exclusão integral de estudante: aprovadas.
+- Demanda, formandos, simulação, recomendações, turmas e conflitos: aprovados.
+- Exportações individuais e de demanda para Excel e PDF: aprovadas.
 - Criação de backup SQLite: aprovada.
 - Exclusão controlada e restauração do backup SQLite: aprovadas.
-- Busca por CPF, RG, matrícula e nome pessoal nos arquivos distribuídos: nenhuma ocorrência.
+- Executável portátil real: inicialização, API, interface, banco atual e relatórios aprovados.
+- Busca pelo nome anterior em código, interface e artefatos ativos: nenhuma ocorrência.
+
+## Executável verificado
+
+- Arquivo: `dist\Hera.exe`
+- Tamanho: 45.614.016 bytes
+- SHA-256: `64362390433210730AB5B43D38DC2694348A7718811F32E4EBD6BC629C76E75E`
+- Assinatura digital: ainda não aplicada; será uma etapa separada de publicação.
 
 ## Dados deliberadamente não inventados
 

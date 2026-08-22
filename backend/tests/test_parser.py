@@ -44,7 +44,7 @@ def test_curriculum_matrix_parser():
 
 
 def test_reference_history_regression():
-    configured = os.getenv("HERA_REFERENCE_PDF") or os.getenv("FARMAHUB_REFERENCE_PDF")
+    configured = os.getenv("HERA_REFERENCE_PDF")
     if not configured:
         pytest.skip("Defina HERA_REFERENCE_PDF para executar a regressão documental")
     path = Path(configured)
@@ -72,7 +72,7 @@ def test_reference_history_regression():
 
 
 def test_no_sensitive_identity_fields_are_returned():
-    configured = os.getenv("HERA_REFERENCE_PDF") or os.getenv("FARMAHUB_REFERENCE_PDF")
+    configured = os.getenv("HERA_REFERENCE_PDF")
     if not configured:
         pytest.skip("Defina HERA_REFERENCE_PDF para executar a regressão documental")
     parsed = parse_ulbra_history(Path(configured).read_bytes(), "2026/2")

@@ -18,9 +18,6 @@ def _data_path() -> Path:
     root = Path(os.getenv("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
     target = root / "Hera" / "data"
     target.mkdir(parents=True, exist_ok=True)
-    legacy_database = root / "FarmaHub Academico" / "data" / "farmahub.db"
-    if legacy_database.exists():
-        os.environ.setdefault("HERA_LEGACY_DATABASE", str(legacy_database))
     return target
 
 
@@ -44,7 +41,7 @@ def main() -> None:
         raise RuntimeError("Os arquivos da interface não foram encontrados.")
 
     app.mount("/", StaticFiles(directory=frontend, html=True), name="frontend")
-    if os.getenv("HERA_NO_BROWSER", os.getenv("FARMAHUB_NO_BROWSER", "0")) != "1":
+    if os.getenv("HERA_NO_BROWSER", "0") != "1":
         threading.Timer(1.2, lambda: webbrowser.open("http://127.0.0.1:8000")).start()
     # Executáveis com --windowed não possuem stdout/stderr. Desabilitar a
     # configuração padrão de logs evita que o Uvicorn tente criar formatadores

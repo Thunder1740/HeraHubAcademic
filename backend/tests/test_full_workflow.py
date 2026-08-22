@@ -133,6 +133,12 @@ def test_complete_local_workflow():
         conflicts = client.get("/api/conflicts")
         assert conflicts.status_code == 200
         assert conflicts.json()
+        classes = client.get("/api/classes")
+        assert classes.status_code == 200
+        assert {row["id"] for row in classes.json()} == set(class_ids)
+        recommendations = client.get("/api/recommendations?limit=2")
+        assert recommendations.status_code == 200
+        assert "recommendation" in recommendations.json()
 
         student_xlsx = client.get(f"/api/reports/students/{student_id}.xlsx")
         assert student_xlsx.status_code == 200
