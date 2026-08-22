@@ -1,1 +1,1 @@
-"""FarmaHub Acadêmico backend."""
+"""Backend do Hera."""

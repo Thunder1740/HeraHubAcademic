@@ -1,6 +1,6 @@
-# FarmaHub Acadêmico
+# Hera
 
-Sistema local de inteligência acadêmica para a coordenação do curso de Farmácia da ULBRA Canoas. O FarmaHub lê históricos escolares oficiais em PDF, apresenta os dados para conferência, mantém uma base SQLite e transforma as pendências curriculares em indicadores de demanda, simulações e relatórios.
+Sistema local de inteligência acadêmica para a coordenação do curso de Farmácia da ULBRA Canoas. O Hera lê históricos escolares oficiais em PDF, apresenta os dados para conferência, mantém uma base SQLite e transforma as pendências curriculares em indicadores de demanda, simulações e relatórios.
 
 ## O que já funciona
 
@@ -23,11 +23,11 @@ Sistema local de inteligência acadêmica para a coordenação do curso de Farm�
 
 ### Usando o executável (recomendado no Windows)
 
-Abra `dist\FarmaHub Academico.exe` com dois cliques. O navegador será aberto automaticamente e não é necessário ter Python ou Node.js para usar esse arquivo.
+Abra `dist\Hera.exe` com dois cliques. O navegador será aberto automaticamente e não é necessário ter Python ou Node.js para usar esse arquivo.
 
 O Windows pode exibir um aviso de aplicativo não reconhecido porque esta versão acadêmica não possui certificado de assinatura digital. Nesse caso, confira se o arquivo veio desta pasta e use **Mais informações > Executar assim mesmo**.
 
-Os dados do executável ficam em `%LOCALAPPDATA%\FarmaHub Academico\data\farmahub.db` e permanecem salvos entre as execuções.
+Os dados do executável ficam em `%LOCALAPPDATA%\Hera\data\hera.db` e permanecem salvos entre as execuções. Na primeira abertura, uma base da versão anterior é copiada automaticamente para o novo local.
 
 ### Usando o código-fonte
 
@@ -55,7 +55,7 @@ Mantenha as janelas abertas enquanto estiver usando o sistema.
 
 ### Linux ou macOS
 
-Abra o terminal na pasta do FarmaHub e execute:
+Abra o terminal na pasta do Hera e execute:
 
 ```bash
 chmod +x scripts/iniciar.sh
@@ -132,7 +132,7 @@ Abra **Configurações** e clique em **Baixar backup**. Guarde o arquivo `.db` e
 Para restaurar:
 
 1. Clique em **Restaurar backup**.
-2. Selecione um backup criado pelo FarmaHub.
+2. Selecione um backup criado pelo Hera.
 3. Confirme a substituição.
 4. Recarregue a página.
 
@@ -142,7 +142,7 @@ Faça um backup antes de importações em grande lote e antes de qualquer atuali
 
 O banco local fica em:
 
-`data/farmahub.db`
+`data/hera.db`
 
 Os PDFs originais não são preservados por padrão. O sistema guarda apenas os dados acadêmicos estruturados necessários. CPF, RG e nascimento não são armazenados.
 
@@ -158,7 +158,7 @@ cd backend
 Para executar também a regressão com um histórico oficial, indique o arquivo:
 
 ```bash
-FARMAHUB_REFERENCE_PDF="/caminho/historico.pdf" ../.venv/bin/pytest -q
+HERA_REFERENCE_PDF="/caminho/historico.pdf" ../.venv/bin/pytest -q
 ```
 
 Para verificar o frontend:
@@ -175,7 +175,7 @@ Verifique se a janela do backend continua aberta e se <http://127.0.0.1:8000/api
 
 ### A porta 3000 ou 8000 já está em uso
 
-Feche outra execução do FarmaHub. Se necessário, reinicie o computador.
+Feche outra execução do Hera. Se necessário, reinicie o computador.
 
 ### O PDF não foi reconhecido
 
@@ -187,7 +187,7 @@ Confira a matriz escolhida e o nome da disciplina na tela de revisão. Não conf
 
 ### A elegibilidade aparece como indeterminada
 
-Isso é esperado enquanto os pré-requisitos oficiais não forem cadastrados. O FarmaHub não presume que uma disciplina seja requisito apenas por estar em semestre anterior.
+Isso é esperado enquanto os pré-requisitos oficiais não forem cadastrados. O Hera não presume que uma disciplina seja requisito apenas por estar em semestre anterior.
 
 ## Limitações conhecidas da versão beta
 

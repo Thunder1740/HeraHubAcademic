@@ -1,5 +1,5 @@
 {
-  "name": "farmahub-academico",
+  "name": "hera-academico",
   "version": "0.1.0",
   "private": true,
   "engines": {
@@ -39,5 +39,5 @@
     "wrangler": "4.92.0"
   },
   "type": "module",
-  "displayName": "FarmaHub Acad\u00eamico"
+  "displayName": "Hera"
 }

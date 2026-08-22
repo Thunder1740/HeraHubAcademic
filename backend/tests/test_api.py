@@ -47,7 +47,7 @@ def test_create_and_delete_matrix():
 
 
 def test_reference_upload_review():
-    path = os.getenv("FARMAHUB_REFERENCE_PDF")
+    path = os.getenv("HERA_REFERENCE_PDF") or os.getenv("FARMAHUB_REFERENCE_PDF")
     if not path:
         return
     with client, open(path, "rb") as stream:

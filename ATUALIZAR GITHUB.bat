@@ -20,7 +20,7 @@ if not errorlevel 1 (
 
 for /f "tokens=1-3 delims=/ " %%a in ("%date%") do set DATA=%%a-%%b-%%c
 for /f "tokens=1-2 delims=: " %%a in ("%time%") do set HORA=%%a-%%b
-git commit -m "Atualizacao do FarmaHub %DATA% %HORA%"
+git commit -m "Atualizacao do Hera %DATA% %HORA%"
 if errorlevel 1 goto :erro
 
 git push

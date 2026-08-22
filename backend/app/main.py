@@ -66,7 +66,7 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="FarmaHub Acadêmico", version="0.1.0", docs_url="/api/docs", redoc_url=None, lifespan=lifespan)
+app = FastAPI(title="Hera", version="0.1.0", docs_url="/api/docs", redoc_url=None, lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5173", "http://127.0.0.1:5173"],
@@ -117,7 +117,7 @@ def _matrix_json(matrix: CurriculumMatrix) -> dict[str, Any]:
 
 @app.get("/api/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "FarmaHub Acadêmico"}
+    return {"status": "ok", "service": "Hera"}
 
 
 @app.get("/api/dashboard")
@@ -669,7 +669,7 @@ def demand_excel(db: Session = Depends(get_db)):
     output = io.BytesIO()
     workbook.save(output)
     output.seek(0)
-    return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": 'attachment; filename="demanda_farmahub.xlsx"'})
+    return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": 'attachment; filename="demanda_hera.xlsx"'})
 
 
 def _pdf_table(title: str, subtitle: str, headers: list[str], rows: list[list[Any]], column_widths: list[float]) -> io.BytesIO:
@@ -705,22 +705,22 @@ def student_pdf(student_id: int, db: Session = Depends(get_db)):
     if not data:
         raise HTTPException(404, "Estudante não encontrado")
     rows = [[f"{r['semester']}º", r["display_name"], r["status"], r["grade"], r["academic_period"], r["hours"]] for r in data["records"]]
-    output = _pdf_table("FarmaHub Acadêmico — Histórico consolidado", f"{data['name']} · Matrícula {data['registration']} · Gerado em {datetime.now():%d/%m/%Y}", ["Sem.", "Disciplina", "Status", "Nota", "Período", "CH"], rows, [12, 115, 32, 15, 25, 15])
+    output = _pdf_table("Hera — Histórico consolidado", f"{data['name']} · Matrícula {data['registration']} · Gerado em {datetime.now():%d/%m/%Y}", ["Sem.", "Disciplina", "Status", "Nota", "Período", "CH"], rows, [12, 115, 32, 15, 25, 15])
     return StreamingResponse(output, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="historico_{data["registration"]}.pdf"'})
 
 
 @app.get("/api/reports/demand.pdf")
 def demand_pdf(db: Session = Depends(get_db)):
     rows = [[r["code"], r["name"], r["total"], r["eligible"], r["potential"], r["interested"], r["graduating"], r["priority"]] for r in demand_rows(db)]
-    output = _pdf_table("FarmaHub Acadêmico — Demanda de disciplinas", f"Relatório gerado em {datetime.now():%d/%m/%Y %H:%M}", ["Código", "Disciplina", "Demanda", "Aptos", "Potenciais", "Interesse", "Formandos", "Prioridade"], rows, [20, 100, 20, 17, 22, 20, 20, 35])
-    return StreamingResponse(output, media_type="application/pdf", headers={"Content-Disposition": 'attachment; filename="demanda_farmahub.pdf"'})
+    output = _pdf_table("Hera — Demanda de disciplinas", f"Relatório gerado em {datetime.now():%d/%m/%Y %H:%M}", ["Código", "Disciplina", "Demanda", "Aptos", "Potenciais", "Interesse", "Formandos", "Prioridade"], rows, [20, 100, 20, 17, 22, 20, 20, 35])
+    return StreamingResponse(output, media_type="application/pdf", headers={"Content-Disposition": 'attachment; filename="demanda_hera.pdf"'})
 
 
 @app.get("/api/backup")
 def download_backup():
     if not DATABASE_PATH.exists():
         raise HTTPException(404, "Banco de dados ainda não foi criado")
-    backup_path = Path(tempfile.gettempdir()) / f"farmahub_backup_{datetime.now():%Y%m%d_%H%M%S}.db"
+    backup_path = Path(tempfile.gettempdir()) / f"hera_backup_{datetime.now():%Y%m%d_%H%M%S}.db"
     with closing(sqlite3.connect(DATABASE_PATH)) as source, closing(sqlite3.connect(backup_path)) as destination:
         source.backup(destination)
     return FileResponse(backup_path, media_type="application/vnd.sqlite3", filename=backup_path.name)
@@ -733,14 +733,14 @@ def restore_backup(file: UploadFile = File(...)):
         raise HTTPException(413, "O backup ultrapassa 50 MB")
     if not data.startswith(b"SQLite format 3\x00"):
         raise HTTPException(415, "O arquivo não é um banco SQLite válido")
-    temp_path = Path(tempfile.gettempdir()) / "farmahub_restore_candidate.db"
+    temp_path = Path(tempfile.gettempdir()) / "hera_restore_candidate.db"
     temp_path.write_bytes(data)
     try:
         with closing(sqlite3.connect(temp_path)) as candidate:
             tables = {row[0] for row in candidate.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             required = {"students", "curriculum_matrices", "matrix_subjects", "course_records"}
             if not required.issubset(tables):
-                raise HTTPException(422, "O arquivo não contém a estrutura do FarmaHub")
+                raise HTTPException(422, "O arquivo não contém a estrutura do Hera")
         engine.dispose()
         with closing(sqlite3.connect(temp_path)) as source, closing(sqlite3.connect(DATABASE_PATH)) as destination:
             source.backup(destination)

@@ -3,7 +3,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/set-state-in-effect */
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import Image from "next/image";
 
 const API = "/api";
 type Row = Record<string, any>;
@@ -163,17 +162,11 @@ export default function Home() {
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark">
-            <Image
-              src="/farmahub-logo.png"
-              alt="Símbolo do curso de Farmácia da ULBRA"
-              width={48}
-              height={48}
-              priority
-            />
+            <span className="brand-monogram" aria-hidden="true">H</span>
           </div>
           <p>
-            <strong>FarmaHub</strong>
-            <span>Acadêmico</span>
+            <strong>Hera</strong>
+            <span>Gestão acadêmica</span>
           </p>
         </div>
         <div className="workspace">
@@ -204,7 +197,7 @@ export default function Home() {
       <main className="main">
         <header>
           <div>
-            <p>FARMAHUB ACADÊMICO</p>
+            <p>HERA</p>
             <h1>{title}</h1>
           </div>
           <div className="header-actions">

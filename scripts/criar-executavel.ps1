@@ -21,11 +21,11 @@ if ($LASTEXITCODE -ne 0) { throw "Falha ao gerar a interface." }
 if ($LASTEXITCODE -ne 0) { throw "Falha ao preparar o empacotador." }
 
 & .\.build-venv\Scripts\pyinstaller.exe --noconfirm --clean --onefile --windowed `
-    --name "FarmaHub Academico" `
+    --name "Hera" `
     --add-data "out;frontend" `
     --collect-all pdfplumber `
     --collect-all reportlab `
     launcher.py
 if ($LASTEXITCODE -ne 0) { throw "Falha ao criar o executável." }
 
-Write-Host "Executável criado em: $project\dist\FarmaHub Academico.exe"
+Write-Host "Executável criado em: $project\dist\Hera.exe"

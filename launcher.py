@@ -16,8 +16,11 @@ def _resource_path(name: str) -> Path:
 
 def _data_path() -> Path:
     root = Path(os.getenv("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
-    target = root / "FarmaHub Academico" / "data"
+    target = root / "Hera" / "data"
     target.mkdir(parents=True, exist_ok=True)
+    legacy_database = root / "FarmaHub Academico" / "data" / "farmahub.db"
+    if legacy_database.exists():
+        os.environ.setdefault("HERA_LEGACY_DATABASE", str(legacy_database))
     return target
 
 
@@ -30,7 +33,7 @@ def main() -> None:
     except Exception:
         pass
 
-    os.environ.setdefault("FARMAHUB_DATA_DIR", str(_data_path()))
+    os.environ.setdefault("HERA_DATA_DIR", str(_data_path()))
 
     import uvicorn
     from fastapi.staticfiles import StaticFiles
@@ -41,7 +44,7 @@ def main() -> None:
         raise RuntimeError("Os arquivos da interface não foram encontrados.")
 
     app.mount("/", StaticFiles(directory=frontend, html=True), name="frontend")
-    if os.getenv("FARMAHUB_NO_BROWSER") != "1":
+    if os.getenv("HERA_NO_BROWSER", os.getenv("FARMAHUB_NO_BROWSER", "0")) != "1":
         threading.Timer(1.2, lambda: webbrowser.open("http://127.0.0.1:8000")).start()
     # Executáveis com --windowed não possuem stdout/stderr. Desabilitar a
     # configuração padrão de logs evita que o Uvicorn tente criar formatadores
@@ -61,8 +64,8 @@ if __name__ == "__main__":
     except Exception as exc:
         ctypes.windll.user32.MessageBoxW(
             0,
-            f"Não foi possível iniciar o FarmaHub.\n\n{exc}",
-            "FarmaHub Acadêmico",
+            f"Não foi possível iniciar o Hera.\n\n{exc}",
+            "Hera",
             0x10,
         )
         raise

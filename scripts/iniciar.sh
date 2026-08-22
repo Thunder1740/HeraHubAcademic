@@ -29,5 +29,5 @@ trap cleanup EXIT INT TERM
 ) &
 BACKEND_PID=$!
 
-printf '\nFarmaHub iniciado. Abra http://127.0.0.1:3000 no navegador.\n\n'
+printf '\nHera iniciado. Abra http://127.0.0.1:3000 no navegador.\n\n'
 npm run dev -- --host 127.0.0.1 --port 3000

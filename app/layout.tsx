@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FarmaHub Acadêmico",
+  title: "Hera",
   description: "Inteligência de planejamento curricular e oferta de turmas para a coordenação de Farmácia.",
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
 };
